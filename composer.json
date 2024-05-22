@@ -1,0 +1,48 @@
+{
+	"name": "mfonte/propaccessor",
+	"description": "A PHP Trait that adds support for direct access to object properties, with explicit accessors and mutators.",
+	"license": "GPL-3.0-or-later",
+	"homepage": "https://github.com/mauriziofonte/propaccessor",
+	"keywords": [
+		"Property",
+		"Properties",
+		"Accessor",
+		"Mutator",
+		"Get",
+		"Set",
+		"Getter",
+		"Setter"
+	],
+	"authors": [
+		{
+			"name": "Corey Frenette",
+			"email": "corey@narwhunderful.com"
+		},
+		{
+			"name": "Maurizio Fonte",
+			"email": "fonte.maurizio@gmail.com"
+		}
+	],
+	"config": {
+		"preferred-install": "dist",
+		"optimize-autoloader": true,
+		"sort-packages": true
+	},
+	"require": {
+		"php": ">=7.4",
+		"icanboogie/inflector": "^2.0"
+	},
+	"require-dev": {
+		"mfonte/coding-standard": "^1.3",
+		"phpunit/phpunit": "^9.5"
+	},
+	"autoload": {
+		"psr-4": {
+			"Mfonte\\PropAccessor\\": "src/"
+		}
+	},
+	"scripts": {
+		"fix": "@php vendor/bin/php-cs-fixer fix",
+		"test": "@php vendor/bin/phpunit --colors=always"
+	}
+}
