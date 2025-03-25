@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
+use Mfonte\PropAccessor\PropifierTrait;
+
 class InvalidGet
 {
-    use Mfonte\PropAccessor\PropifierTrait;
+    use PropifierTrait;
 
-    private $something = 'test';
-
-    protected function getSomething($a, $b)
+    public function getSomething(string $param1, string $param2): string
     {
-        return $this->something;
+        return 'value';
     }
 }

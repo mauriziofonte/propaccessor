@@ -2,28 +2,25 @@
 
 declare(strict_types=1);
 
+use Mfonte\PropAccessor\PropifierTrait;
+
 class ArrayAll
 {
-    use Mfonte\PropAccessor\PropifierTrait;
+    use PropifierTrait;
 
-    private $arr;
+    private array $arr = [];
 
-    public function __construct(array $arr)
+    public function setArr(string $key, mixed $value): void
     {
-        $this->arr = $arr;
+        $this->arr[$key] = $value;
     }
 
-    protected function getArr($index)
+    public function getArr(string $key): mixed
     {
-        return $this->arr[$index];
+        return $this->arr[$key] ?? null;
     }
 
-    protected function setArr($index, $value)
-    {
-        $this->arr[$index] = $value;
-    }
-
-    protected function itrArr()
+    public function itrArr(): ArrayIterator
     {
         return new ArrayIterator($this->arr);
     }

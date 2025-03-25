@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace Mfonte\PropAccessor;
 
 use ArrayAccess;
@@ -8,8 +10,9 @@ use Traversable;
 use Mfonte\PropAccessor\Exception\NoSuchPropertyException;
 
 /**
- * A magic accessor/mutator for dealing with array properties.
+ * A magic accessor/mutator for dealing with array-like properties.
  *
+ * @package Mfonte\PropAccessor
  * @author Corey Frenette
  * @author Maurizio Fonte
  * @copyright Copyright (c) 2019 Corey Frenette, Copyright (c) 2024 Maurizio Fonte
@@ -21,42 +24,44 @@ class ArrayProperty implements ArrayAccess, IteratorAggregate
      *
      * @var string
      */
-    private $name;
+    private string $name;
 
     /**
      * The object instance we are getting the properties from.
      *
      * @var object
      */
-    private $obj;
+    private object $obj;
 
     /**
-     * The accessor.
+     * The accessor method.
      *
      * @var ReflectionMethod|null
      */
-    private $get;
+    private ?ReflectionMethod $get;
 
     /**
-     * The mutator.
+     * The mutator method.
      *
      * @var ReflectionMethod|null
      */
-    private $set;
+    private ?ReflectionMethod $set;
 
     /**
-     * The iterator.
+     * The iterator method.
      *
      * @var ReflectionMethod|null
      */
-    private $iterator;
+    private ?ReflectionMethod $iterator;
 
     /**
-     * @param ReflectionMethod|null $get The accessor if one is defined, otherwise null
-     * @param ReflectionMethod|null $set The mutator if one is defined, otherwise null
-     * @param ReflectionMethod|null $iterator The iterator if one is defined, otherwise null
+     * Constructor for ArrayProperty.
+     *
+     * @param ReflectionMethod|null $get The accessor method, if one is defined.
+     * @param ReflectionMethod|null $set The mutator method, if one is defined.
+     * @param ReflectionMethod|null $iterator The iterator method, if one is defined.
      */
-    public function __construct(ReflectionMethod $get = null, ReflectionMethod $set = null, ReflectionMethod $iterator = null)
+    public function __construct(?ReflectionMethod $get = null, ?ReflectionMethod $set = null, ?ReflectionMethod $iterator = null)
     {
         $this->get = $get;
         $this->set = $set;
@@ -79,13 +84,11 @@ class ArrayProperty implements ArrayAccess, IteratorAggregate
     }
 
     /**
-     * Update the object so we are accessing properties on the correct object.
-     * This must be done because ArrayProperty objects are shared between all
-     * instances of a given class.
+     * Updates the object instance.
      *
-     * @param object $obj The new object
+     * @param object $obj The object instance.
      */
-    public function this($obj): void
+    public function this(object $obj): void
     {
         $this->obj = $obj;
     }
@@ -93,11 +96,11 @@ class ArrayProperty implements ArrayAccess, IteratorAggregate
     /**
      * Executes the accessor for a given array property.
      *
-     * @param mixed $offset The index into the array to access
+     * @param mixed $offset The index into the array to access.
      *
-     * @throws NoSuchPropertyException If there is no accessor for this array property
+     * @return mixed The return value of the accessor.
      *
-     * @return mixed The return value of the accessor
+     * @throws NoSuchPropertyException If there is no accessor for this array property.
      */
     public function offsetGet($offset): mixed
     {
@@ -111,16 +114,15 @@ class ArrayProperty implements ArrayAccess, IteratorAggregate
     /**
      * Executes the mutator for a given array property.
      *
-     * @param mixed $offset The index into the array to mutate
-     * @param mixed $value The new value
+     * @param mixed $offset The index into the array to mutate.
+     * @param mixed $value The new value.
      *
-     * @throws NoSuchPropertyException If there is no mutator for this array property
+     * @throws NoSuchPropertyException If there is no mutator for this array property.
      */
     public function offsetSet($offset, $value): void
     {
         if ($this->set !== null) {
             $this->set->invoke($this->obj, $offset, $value);
-
             return;
         }
 
@@ -128,7 +130,11 @@ class ArrayProperty implements ArrayAccess, IteratorAggregate
     }
 
     /**
-     * @inheritDoc
+     * Checks if an offset exists.
+     *
+     * @param mixed $offset The index to check.
+     *
+     * @return bool Always returns false.
      */
     public function offsetExists($offset): bool
     {
@@ -136,18 +142,21 @@ class ArrayProperty implements ArrayAccess, IteratorAggregate
     }
 
     /**
-     * @inheritDoc
+     * Unsets an offset.
+     *
+     * @param mixed $offset The index to unset.
      */
     public function offsetUnset($offset): void
     {
+        // No action taken.
     }
 
     /**
-     * Returns the iterator for the array.
+     * Returns the iterator for the array property.
      *
-     * @throws NoSuchPropertyException If there is no iterator for the array
+     * @return Traversable The iterator.
      *
-     * @return Traversable The iterator
+     * @throws NoSuchPropertyException If there is no iterator for this array property.
      */
     public function getIterator(): Traversable
     {

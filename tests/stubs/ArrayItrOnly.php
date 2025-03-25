@@ -2,18 +2,20 @@
 
 declare(strict_types=1);
 
+use Mfonte\PropAccessor\PropifierTrait;
+
 class ArrayItrOnly
 {
-    use Mfonte\PropAccessor\PropifierTrait;
+    use PropifierTrait;
 
-    private $arr;
+    private array $arr;
 
     public function __construct(array $arr)
     {
         $this->arr = $arr;
     }
 
-    protected function itrArr()
+    public function itrArr(): ArrayIterator
     {
         return new ArrayIterator($this->arr);
     }

@@ -1,20 +1,19 @@
 <?php
+declare(strict_types=1);
+
 namespace Mfonte\PropAccessor;
 
+use ReflectionClass;
+use ReflectionMethod;
+use RuntimeException;
 use Mfonte\PropAccessor\Exception\InvalidPropertyException;
 use Mfonte\PropAccessor\Exception\MismatchedPropertiesException;
 use Mfonte\PropAccessor\Exception\NoSuchPropertyException;
-use function get_class;
-use ICanBoogie\Inflector;
-use ReflectionClass;
-use ReflectionException;
-use ReflectionMethod;
-use RuntimeException;
-use function strlen;
 
 /**
- * Turns regular accessors and mutators into real properties.
+ * Trait that turns accessors and mutators into real properties via magic methods.
  *
+ * @package Mfonte\PropAccessor
  * @author Corey Frenette
  * @author Maurizio Fonte
  * @copyright Copyright (c) 2019 Corey Frenette, Copyright (c) 2024 Maurizio Fonte
@@ -22,31 +21,29 @@ use function strlen;
 trait PropifierTrait
 {
     /**
-     * A property cache shared between all instances.
+     * A shared method map cache for all instances.
      *
      * @var array
      */
-    private static $methodMap = [];
+    private static array $methodMap = [];
 
     /**
-     * Executes the accessor for a given property.
+     * Magic getter to access properties via their accessors.
      *
-     * @param string $property The name of the property
+     * @param string $property The property name.
+     *
+     * @return mixed The value of the property.
      *
      * @throws NoSuchPropertyException
-     * @throws MismatchedPropertiesException If one property is an array property and the other isn't
-     * @throws InvalidPropertyException If a property has an invalid number of arguments
-     *
-     * @return mixed The value of the property
+     * @throws MismatchedPropertiesException
+     * @throws InvalidPropertyException
      */
-    public function __get(string $property)
+    public function __get(string $property): mixed
     {
-        // build dependency tree, if necessary
-        self::_propAccessorBuildDeps($this);
+        self::buildMethodMap();
 
-        // check if the property exists
         $class = get_class($this);
-        if (! isset(self::$methodMap[$class][$property]['get'])) {
+        if (!isset(self::$methodMap[$class][$property]['get'])) {
             throw new NoSuchPropertyException($property);
         }
 
@@ -54,7 +51,6 @@ trait PropifierTrait
 
         if ($method instanceof ArrayProperty) {
             $method->this($this);
-
             return $method;
         }
 
@@ -62,23 +58,21 @@ trait PropifierTrait
     }
 
     /**
-     * Executes the mutator for a given property.
+     * Magic setter to set properties via their mutators.
      *
-     * @param string $property The name of the property
-     * @param mixed $value The value to set the property to
+     * @param string $property The property name.
+     * @param mixed $value The value to set.
      *
      * @throws NoSuchPropertyException
-     * @throws MismatchedPropertiesException If one property is an array property and the other isn't
-     * @throws InvalidPropertyException If a property has an invalid number of arguments
+     * @throws MismatchedPropertiesException
+     * @throws InvalidPropertyException
      */
     public function __set(string $property, $value): void
     {
-        // build dependency tree, if necessary
-        self::_propAccessorBuildDeps($this);
+        self::buildMethodMap();
 
-        // check if the property exists
         $class = get_class($this);
-        if (! isset(self::$methodMap[$class][$property]['set'])) {
+        if (!isset(self::$methodMap[$class][$property]['set'])) {
             throw new NoSuchPropertyException($property);
         }
 
@@ -88,131 +82,193 @@ trait PropifierTrait
     }
 
     /**
-     * Checks if a property is set.
+     * Magic isset to check if a property is set.
      *
-     * @param string $property The name of the property
+     * @param string $property The property name.
      *
-     * @throws MismatchedPropertiesException If one property is an array property and the other isn't
-     * @throws InvalidPropertyException If a property has an invalid number of arguments
+     * @return bool True if set, false otherwise.
      *
-     * @return bool True if the property exists, false otherwise
+     * @throws MismatchedPropertiesException
+     * @throws InvalidPropertyException
      */
     public function __isset(string $property): bool
     {
-        // build dependency tree, if necessary
-        self::_propAccessorBuildDeps($this);
+        self::buildMethodMap();
 
-        // check if the property exists
         $class = get_class($this);
 
         return isset(self::$methodMap[$class][$property]['get']);
     }
 
     /**
-     * Builds and caches the properties for a given object, if not already cached.
+     * Magic unset to unset a property.
      *
-     * @param object $obj The object to cache
+     * @param string $property The property name.
      *
-     * @throws MismatchedPropertiesException If one property is an array property and the other isn't
-     * @throws InvalidPropertyException If a property has an invalid number of arguments
+     * @throws NoSuchPropertyException
      */
-    private static function _propAccessorBuildDeps($obj): void
+    public function __unset(string $property): void
     {
-        $name = get_class($obj);
+        self::buildMethodMap();
 
-        if (! array_key_exists($name, self::$methodMap)) {
-            try {
-                $class = new ReflectionClass($obj);
-            } catch(ReflectionException $e) {
-                throw new RuntimeException('This exception should never be thrown.', 0, $e);
-            }
-
-            $properties = array_values(array_filter($class->getMethods(), function (ReflectionMethod $method) {
-                $isProtectedOrPublic = $method->isProtected() || $method->isPublic();
-                $hasMinLength = strlen($method->name) > 3;
-                $hasRequiredNaming = str_starts_with($method->name, 'get') || str_starts_with($method->name, 'set') || str_starts_with($method->name, 'itr');
-
-                return $isProtectedOrPublic && $hasMinLength && $hasRequiredNaming;
-            }));
-
-            $inflector = Inflector::get();
-
-            $methodMap = array_reduce($properties, function (array $mapped, ReflectionMethod $property) use ($inflector) {
-                $prop_name = call_user_func_array([$inflector, 'underscore'], [substr($property->name, 3)]);
-
-                if (! isset($mapped[$prop_name])) {
-                    $mapped[$prop_name] = ['get' => null, 'set' => null, 'itr' => null];
-                }
-
-                $mapped[$prop_name][substr($property->name, 0, 3)] = $property;
-
-                return $mapped;
-            }, []);
-
-            self::$methodMap[$name] = self::_propAccessorExtractProperties($methodMap);
+        $class = get_class($this);
+        if (!isset(self::$methodMap[$class][$property]['unset'])) {
+            throw new NoSuchPropertyException($property);
         }
+
+        $method = self::$methodMap[$class][$property]['unset'];
+
+        $this->{$method}();
     }
 
     /**
-     * Verifies and builds accessors/mutators for each property.
+     * Builds the method map for the class if it doesn't exist.
      *
-     * @param ReflectionMethod[][] $properties The properties to transform
-     *
-     * @throws MismatchedPropertiesException If one property is an array property and the other isn't
-     * @throws InvalidPropertyException If a property has an invalid number of arguments
-     *
-     * @return string[][][]|ArrayProperty[][][]|null[][][] The executable properties for the given object
+     * @throws MismatchedPropertiesException
+     * @throws InvalidPropertyException
      */
-    private static function _propAccessorExtractProperties(array $properties): array
+    private function buildMethodMap(): void
+    {
+        $class = get_class($this);
+
+        if (isset(self::$methodMap[$class])) {
+            return;
+        }
+
+        try {
+            $reflection = new ReflectionClass($this);
+        } catch (\ReflectionException $e) {
+            throw new RuntimeException('Reflection failed.', 0, $e);
+        }
+
+        $methods = $reflection->getMethods(\ReflectionMethod::IS_PUBLIC | \ReflectionMethod::IS_PROTECTED);
+
+        $methodMap = [];
+
+        foreach ($methods as $method) {
+            $name = $method->name;
+            $prefix = substr($name, 0, 3);
+            $propertyName = '';
+
+            if ($prefix === 'get' || $prefix === 'set' || $prefix === 'itr') {
+                $propertyName = $this->camelToSnake(substr($name, 3));
+            } elseif (substr($name, 0, 2) === 'is' || substr($name, 0, 3) === 'has') {
+                $prefix = substr($name, 0, 2);
+                $propertyName = $this->camelToSnake(substr($name, strlen($prefix)));
+            } elseif ($prefix === 'uns') {
+                $prefix = 'unset';
+                $propertyName = $this->camelToSnake(substr($name, 3));
+            } else {
+                continue;
+            }
+
+            if (!isset($methodMap[$propertyName])) {
+                $methodMap[$propertyName] = ['get' => null, 'set' => null, 'itr' => null, 'unset' => null];
+            }
+
+            if ($prefix === 'get' || $prefix === 'is' || $prefix === 'has') {
+                $methodMap[$propertyName]['get'] = $method;
+            } elseif ($prefix === 'set') {
+                $methodMap[$propertyName]['set'] = $method;
+            } elseif ($prefix === 'itr') {
+                $methodMap[$propertyName]['itr'] = $method;
+            } elseif ($prefix === 'unset') {
+                $methodMap[$propertyName]['unset'] = $method;
+            }
+        }
+
+        // Custom property mappings
+        if (property_exists($this, 'propertyMap') && is_array($this::$propertyMap)) {
+            foreach ($this::$propertyMap as $propName => $methods) {
+                if (!isset($methodMap[$propName])) {
+                    $methodMap[$propName] = ['get' => null, 'set' => null, 'itr' => null, 'unset' => null];
+                }
+                foreach ($methods as $type => $methodName) {
+                    if (method_exists($this, $methodName)) {
+                        $methodReflection = new ReflectionMethod($this, $methodName);
+                        $methodMap[$propName][$type] = $methodReflection;
+                    }
+                }
+            }
+        }
+
+        self::$methodMap[$class] = $this->extractProperties($methodMap);
+    }
+
+    /**
+     * Extracts the properties from the method map.
+     *
+     * @param array $methodMap The method map.
+     *
+     * @return array The extracted properties.
+     *
+     * @throws MismatchedPropertiesException
+     * @throws InvalidPropertyException
+     */
+    private function extractProperties(array $methodMap): array
     {
         $extracted = [];
 
-        foreach ($properties as $name => $property) {
-            $hasGet = $property['get'] !== null;
-            $hasSet = $property['set'] !== null;
+        foreach ($methodMap as $name => $methods) {
+            $hasGet = $methods['get'] !== null;
+            $hasSet = $methods['set'] !== null;
 
             if ($hasGet && $hasSet) {
-                if (
-                    $property['get']->getNumberOfParameters() === 0 &&
-                    $property['set']->getNumberOfParameters() === 1
-                ) {
-                    // Regular get and set
-                    $extracted[$name] = ['get' => $property['get']->name, 'set' => $property['set']->name];
-                } elseif (
-                    $property['get']->getNumberOfParameters() === 1 &&
-                    $property['set']->getNumberOfParameters() === 2
-                ) {
-                    // Array get and set
-                    $array_property = new ArrayProperty($property['get'], $property['set'], $property['itr']);
-                    $extracted[$name] = ['get' => $array_property, 'set' => $array_property];
+                $getParams = $methods['get']->getNumberOfParameters();
+                $setParams = $methods['set']->getNumberOfParameters();
+
+                if ($getParams === 0 && $setParams === 1) {
+                    // Regular property
+                    $extracted[$name] = ['get' => $methods['get']->name, 'set' => $methods['set']->name];
+                } elseif ($getParams === 1 && $setParams === 2) {
+                    // Array property
+                    $arrayProperty = new ArrayProperty($methods['get'], $methods['set'], $methods['itr'] ?? null);
+                    $extracted[$name] = ['get' => $arrayProperty, 'set' => $arrayProperty];
                 } else {
-                    throw new MismatchedPropertiesException($property['get'], $property['set']);
+                    throw new MismatchedPropertiesException($methods['get'], $methods['set']);
                 }
             } elseif ($hasGet) {
-                if ($property['get']->getNumberOfParameters() === 0) {
-                    // Regular get
-                    $extracted[$name] = ['get' => $property['get']->name, 'set' => null];
-                } elseif ($property['get']->getNumberOfParameters() === 1) {
-                    // Array get
-                    $extracted[$name] = ['get' => new ArrayProperty($property['get'], null, $property['itr']), 'set' => null];
+                $getParams = $methods['get']->getNumberOfParameters();
+
+                if ($getParams === 0) {
+                    // Getter only property
+                    $extracted[$name] = ['get' => $methods['get']->name, 'set' => null];
+                } elseif ($getParams === 1) {
+                    // Getter only array property
+                    $arrayProperty = new ArrayProperty($methods['get'], null, $methods['itr'] ?? null);
+                    $extracted[$name] = ['get' => $arrayProperty, 'set' => null];
                 } else {
-                    throw new InvalidPropertyException($property['get']);
+                    throw new InvalidPropertyException($methods['get']);
                 }
             } elseif ($hasSet) {
-                if ($property['set']->getNumberOfParameters() === 1) {
-                    // Regular set
-                    $extracted[$name] = ['get' => null, 'set' => $property['set']->name];
-                } elseif ($property['set']->getNumberOfParameters() === 2) {
-                    // Array set
-                    $extracted[$name] = ['get' => new ArrayProperty(null, $property['set'], $property['itr']), 'set' => null];
+                $setParams = $methods['set']->getNumberOfParameters();
+
+                if ($setParams === 1) {
+                    // Setter only property
+                    $extracted[$name] = ['get' => null, 'set' => $methods['set']->name];
+                } elseif ($setParams === 2) {
+                    // Setter only array property
+                    $arrayProperty = new ArrayProperty(null, $methods['set'], $methods['itr'] ?? null);
+                    $extracted[$name] = ['get' => $arrayProperty, 'set' => null];
                 } else {
-                    throw new InvalidPropertyException($property['set']);
+                    throw new InvalidPropertyException($methods['set']);
                 }
-            } else {
-                $extracted[$name] = ['get' => new ArrayProperty(null, null, $property['itr']), 'set' => null];
             }
         }
 
         return $extracted;
+    }
+
+    /**
+     * Converts camelCase to snake_case.
+     *
+     * @param string $input The input string.
+     *
+     * @return string The snake_case string.
+     */
+    private function camelToSnake(string $input): string
+    {
+        $pattern = '/(?<=\\w)(?=[A-Z])/';
+        return strtolower(preg_replace($pattern, '_', $input));
     }
 }

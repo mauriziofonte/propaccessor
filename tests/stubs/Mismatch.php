@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
+use Mfonte\PropAccessor\PropifierTrait;
+
 class Mismatch
 {
-    use Mfonte\PropAccessor\PropifierTrait;
+    use PropifierTrait;
 
-    private $something;
-
-    protected function getSomething($index)
+    public function getSomething(): string
     {
-        return $this->something;
+        return 'value';
     }
 
-    protected function setSomething($val)
+    public function setSomething(string $value, string $extra): void
     {
-        $this->something = $val;
+        // Incorrect setter signature
     }
 }

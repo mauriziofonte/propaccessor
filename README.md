@@ -1,105 +1,158 @@
 # PHP PropAccessor
 
-A PHP Trait that adds support for direct access to object properties, with explicit accessors and mutators.
+A PHP Trait that allows direct access to object properties via magic methods, mapping them to explicit accessor and mutator methods.
 
-This package has been forked from [https://github.com/BapCat/Propifier](https://github.com/BapCat/Propifier) and updated to work with PHP 7.4 and support both _public_ and _protected_ accessors and mutators.
-Original license (GNU GPL v3) has been kept. Credits to the original author.
+This package is a fork of [Propifier](https://github.com/BapCat/Propifier), updated for PHP 7.4 compatibility and extended functionality. Original license (GNU GPL v3) has been retained. Credits to the original author.
 
 ## Installation
 
-Installation can be done through Composer.
+Install via Composer:
 
 ```bash
 composer require mfonte/propaccessor
 ```
 
-## Why use this package?
+## Why Use This Package?
 
-This class allows you to define properties in your classes that can be directly accessed and explicitly setted by accessing the object's properties. This is useful when you want to have control over the access to your object's properties, but you **want explicit and direct access to the properties themselves** without using _getters_ and _setters_.
+In object-oriented programming, it's a common practice to use getter and setter methods to control access to an object's properties. However, this can lead to verbose code and reduce readability.
 
-## What does this package do?
+PHP PropAccessor allows you to:
 
-This class allows you to define properties in your classes that can be **directly accessed** and **explicitly setted** by accessing the object's properties.
+* **Directly access properties** using `$object->property` syntax.
+* **Maintain control** over property access through custom getter and setter methods.
+* **Define array-like properties** that can be accessed using `$object->arrayProperty[$key]`.
+* **Implement iterators** for properties, enabling `foreach` loops directly on object properties.
 
-```php
-class Foo {
-    use \Mfonte\PropAccessor\PropifierTrait;
+## How Does It Work?
 
-    private string $propertyOne;
-    private int $properyTwo;
-    private array $arrayableProperty = [];
+By including the `PropifierTrait` in your class, the magic methods `__get()`, `__set()`, `__isset()`, and `__unset()` are implemented. These methods intercept property access and delegate to your defined getter, setter, and iterator methods based on naming conventions.
 
-    public function setPropertyOne(string $value) {
-        $this->propertyOne = $value;
-    }
+### Naming Conventions
 
-    public function getPropertyOne() {
-        return $this->propertyOne;
-    }
+* **Getter Methods**: `getPropertyName()`, `isPropertyName()`, or `hasPropertyName()`
+* **Setter Methods**: `setPropertyName()`
+* **Iterator Methods**: `itrPropertyName()`
 
-    public function setPropertyTwo(int $value) {
-        $this->propertyTwo = $value * 10;
-    }
+### Property Name Resolution
 
-    public function getPropertyTwo() {
-        return $this->propertyTwo;
-    }
+The property name is derived from your method names by removing the prefix (`get`, `set`, `is`, `has`, `itr`) and converting the remainder to camelCase or snake\_case, depending on your preference.
 
-    public function setArrayableProperty(int $index, mixed $value) {
-        $this->arrayableProperty[$index] = $value;
-    }
+## Examples
 
-    public function getArrayableProperty(int $index) {
-        return $this->arrayableProperty[$index];
-    }
-}
-
-$foo = new Foo();
-
-$foo->propertyOne = 'I am Property One, and I\'ve been directly setted!';
-echo $foo->propertyOne; // -> 'I am Property One, and I\'ve been directly setted!'
-
-$foo->propertyTwo = 10;
-echo $foo->propertyTwo; // -> 100 (setter multiplies by 10)
-
-$foo->arrayableProperty[0] = 'I am the first element of the arrayable property!';
-echo $foo->arrayableProperty[0]; // -> 'I am the first element of the arrayable property!'
-```
-
-This class also allows you to define **iterators** for your properties, so you can use them in `foreach` loops.
+### Basic Usage
 
 ```php
-class Foo {
-    use \Mfonte\PropAccessor\PropifierTrait;
+use Mfonte\PropAccessor\PropifierTrait;
 
-    private array $arrayableProperty = [];
+class User {
+    use PropifierTrait;
 
-    public function setArrayableProperty(int $index, mixed $value) {
-        $this->arrayableProperty[$index] = $value;
+    private string $name;
+
+    public function setName(string $name): void {
+        $this->name = ucfirst($name);
     }
 
-    public function getArrayableProperty(int $index) {
-        return $this->arrayableProperty[$index];
-    }
-
-    public function itrArrayableProperty() {
-        return new ArrayIterator($this->arrayableProperty);
+    public function getName(): string {
+        return $this->name;
     }
 }
 
-$foo = new Foo();
-
-$foo->arrayableProperty[0] = 'I am the first element of the arrayable property!';
-$foo->arrayableProperty[1] = 'I am the second element of the arrayable property!';
-$foo->arrayableProperty[2] = 'I am the third element of the arrayable property!';
-
-foreach($foo->arrayableProperty as $key => $value) {
-    echo "Key: $key, Value: $value\n";
-}
-
-// Output:
-// Key: 0, Value: I am the first element of the arrayable property!
-// Key: 1, Value: I am the second element of the arrayable property!
-// Key: 2, Value: I am the third element of the arrayable property!
+$user = new User();
+$user->name = 'john';
+echo $user->name; // Outputs 'John'
 ```
 
+### Boolean Properties
+
+```php
+class FeatureToggle {
+    use PropifierTrait;
+
+    private bool $isEnabled = false;
+
+    public function isEnabled(): bool {
+        return $this->isEnabled;
+    }
+
+    public function setEnabled(bool $value): void {
+        $this->isEnabled = $value;
+    }
+}
+
+$feature = new FeatureToggle();
+$feature->enabled = true;
+
+if ($feature->enabled) {
+    // Feature is enabled
+}
+```
+
+### Array Properties
+
+```php
+use ArrayIterator;
+
+class Collection {
+    use PropifierTrait;
+
+    private array $items = [];
+
+    public function setItems(int $index, mixed $value): void {
+        $this->items[$index] = $value;
+    }
+
+    public function getItems(int $index): mixed {
+        return $this->items[$index] ?? null;
+    }
+
+    public function itrItems(): ArrayIterator {
+        return new ArrayIterator($this->items);
+    }
+}
+
+$collection = new Collection();
+$collection->items[0] = 'Item 1';
+$collection->items[1] = 'Item 2';
+
+foreach ($collection->items as $index => $item) {
+    echo "$index: $item\n";
+}
+```
+
+### Custom Property Mappings
+
+```php
+class Config {
+    use PropifierTrait;
+
+    protected static array $propertyMap = [
+        'dbHost' => ['get' => 'getDatabaseHost', 'set' => 'setDatabaseHost'],
+    ];
+
+    private string $databaseHost;
+
+    protected function getDatabaseHost(): string {
+        return $this->databaseHost;
+    }
+
+    protected function setDatabaseHost(string $host): void {
+        $this->databaseHost = $host;
+    }
+}
+
+$config = new Config();
+$config->dbHost = 'localhost';
+echo $config->dbHost; // Outputs 'localhost'
+```
+
+## Limitations and Notes
+
+* **Virtual Properties**: The properties accessed are virtual and managed through magic methods.
+* **Naming Conventions**: Method names must follow the defined naming conventions to be recognized.
+* **No Automatic Type Conversion**: Ensure your getter and setter methods handle type conversions if necessary.
+* **Custom Exceptions**: The package uses custom exceptions. Ensure they are included if you extract code snippets.
+
+## License
+
+This package is licensed under the GNU GPL v3. Credits to the original author of [Propifier](https://github.com/BapCat/Propifier).

@@ -2,14 +2,16 @@
 
 declare(strict_types=1);
 
+use Mfonte\PropAccessor\PropifierTrait;
+
 class ArraySetOnly
 {
-    use Mfonte\PropAccessor\PropifierTrait;
+    use PropifierTrait;
 
-    private $something = ['test'];
+    private array $arrayProperty = [];
 
-    protected function setSomething($index, $value)
+    public function setArrayProperty(string $key, mixed $value): void
     {
-        $this->something[$index] = $value;
+        $this->arrayProperty[$key] = $value;
     }
 }

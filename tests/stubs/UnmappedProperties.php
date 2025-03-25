@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 use Mfonte\PropAccessor\PropifierTrait;
 
-class GetOnly
+class UnmappedProperties
 {
     use PropifierTrait;
 
-    public function getSomething(): string
-    {
-        return 'test';
-    }
+    private string $unmappedProperty = 'value';
 }

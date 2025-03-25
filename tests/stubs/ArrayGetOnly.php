@@ -2,14 +2,21 @@
 
 declare(strict_types=1);
 
+use Mfonte\PropAccessor\PropifierTrait;
+
 class ArrayGetOnly
 {
-    use Mfonte\PropAccessor\PropifierTrait;
+    use PropifierTrait;
 
-    private $something = ['test' => 'test'];
+    private array $arrayProperty = ['key' => 'value'];
 
-    protected function getSomething($index)
+    public function getArrayProperty(string $key): mixed
     {
-        return $this->something[$index];
+        return $this->arrayProperty[$key] ?? null;
+    }
+
+    public function itrArrayProperty(): ArrayIterator
+    {
+        return new ArrayIterator($this->arrayProperty);
     }
 }

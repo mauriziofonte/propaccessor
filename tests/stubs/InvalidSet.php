@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
+use Mfonte\PropAccessor\PropifierTrait;
+
 class InvalidSet
 {
-    use Mfonte\PropAccessor\PropifierTrait;
+    use PropifierTrait;
 
-    private $something = 'test';
-
-    protected function setSomething($value, $a, $b)
+    public function setSomething(string $param1, string $param2): void
     {
-        $this->something = $value;
+        // Invalid setter with too many parameters
     }
 }

@@ -4,58 +4,57 @@ declare(strict_types=1);
 
 use Mfonte\PropAccessor\PropifierTrait;
 
-/**
- * @property mixed $something
- * @property array $array
- */
 class Dummy
 {
     use PropifierTrait;
 
-    private $something;
-    private $another;
-    private $calculator;
+    private string $something;
+    private string $another;
+    private int $calculator;
+    private array $array = [];
 
-    /** @var array */
-    private $array = [1, 2, 3, 4];
+    public function setSomething(string $value): void
+    {
+        $this->something = $value;
+    }
 
-    protected function getSomething()
+    public function getSomething(): string
     {
         return $this->something;
     }
 
-    protected function setSomething($val): void
+    public function setAnother(string $value): void
     {
-        $this->something = $val;
+        $this->another = $value;
     }
 
-    public function getAnother()
+    public function getAnother(): string
     {
         return $this->another;
     }
 
-    public function setAnother($val): void
+    public function setCalculator(int $value): void
     {
-        $this->another = $val;
+        $this->calculator = $value * 10;
     }
 
-    public function getCalculator()
+    public function getCalculator(): int
     {
         return $this->calculator;
     }
 
-    public function setCalculator(int $val): void
+    public function setArray(int $index, mixed $value): void
     {
-        $this->calculator = $val * 10;
+        $this->array[$index] = $value;
     }
 
-    protected function getArray($index)
+    public function getArray(int $index): mixed
     {
-        return $this->array[$index];
+        return $this->array[$index] ?? null;
     }
 
-    protected function setArray($index, $val): void
+    public function itrArray(): ArrayIterator
     {
-        $this->array[$index] = $val;
+        return new ArrayIterator($this->array);
     }
 }
